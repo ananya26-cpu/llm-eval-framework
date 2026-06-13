@@ -29,18 +29,34 @@ def init_db():
         task_type TEXT,
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
     )''')
+    c.execute('''CREATE TABLE IF NOT EXISTS feedback (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        prompt TEXT,
+        predicted_winner TEXT,
+        task_type TEXT,
+        helpful INTEGER,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    )''')
     conn.commit()
     conn.close()
 
 def save_result(prompt, result, task_type):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute('''INSERT INTO evaluations 
+    c.execute('''INSERT INTO evaluations
         (prompt, model_name, response, latency_ms, tokens_used, cost_per_1k, quality_score, task_type)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
         (prompt, result["model_name"], result["response"],
          result["latency_ms"], result["tokens_used"],
          result["cost_per_1k_tokens"], result["quality_score"], task_type))
+    conn.commit()
+    conn.close()
+
+def save_feedback(prompt, predicted_winner, task_type, helpful):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('''INSERT INTO feedback (prompt, predicted_winner, task_type, helpful)
+        VALUES (?, ?, ?, ?)''', (prompt, predicted_winner, task_type, helpful))
     conn.commit()
     conn.close()
 
@@ -102,17 +118,33 @@ Reply ONLY with a JSON like: {{"LLaMA 70B": 8.5, "LLaMA 8B": 7.0, "Gemini 2.0 Fl
             r["quality_score"] = 5.0
     return results
 
-def pick_winner(results):
-    best = None
-    best_score = -1
+def compute_scores(results):
+    scored = []
     for r in results:
-        combined = (r["quality_score"] * 0.5) + \
-                   (1000 / max(r["latency_ms"], 1) * 0.3) + \
-                   ((1 - r["cost_per_1k_tokens"]) * 0.2)
-        if combined > best_score:
-            best_score = combined
-            best = r
-    return best["model_name"] if best else results[0]["model_name"]
+        quality_norm = r["quality_score"] * 10
+        speed_norm = max(0, 100 - (r["latency_ms"] / 50))
+        cost_norm = max(0, 100 - (r["cost_per_1k_tokens"] * 100))
+        combined = (quality_norm * 0.5) + (speed_norm * 0.3) + (cost_norm * 0.2)
+        scored.append({**r, "_combined": combined})
+    return scored
+
+def pick_winner_with_confidence(results):
+    scored = compute_scores(results)
+    total = sum(max(r["_combined"], 0.1) for r in scored)
+    for r in scored:
+        r["confidence"] = round((max(r["_combined"], 0.1) / total) * 100)
+    winner = max(scored, key=lambda x: x["_combined"])
+    winner_name = winner["model_name"]
+    others = [r for r in scored if r["model_name"] != winner_name]
+    reasons = []
+    if winner["quality_score"] >= max(r["quality_score"] for r in others):
+        reasons.append("Highest quality score")
+    if winner["latency_ms"] > 0 and winner["latency_ms"] <= min(r["latency_ms"] for r in others if r["latency_ms"] > 0):
+        reasons.append("Fastest response")
+    if winner["cost_per_1k_tokens"] <= min(r["cost_per_1k_tokens"] for r in others):
+        reasons.append("Most cost efficient")
+    reasons.append("Strong historical performance")
+    return winner_name, reasons, {r["model_name"]: r["confidence"] for r in scored}
 
 async def evaluate(prompt, task_type="general"):
     tasks = [
@@ -122,9 +154,17 @@ async def evaluate(prompt, task_type="general"):
     ]
     results = list(await asyncio.gather(*tasks))
     results = score_quality(results, prompt)
-    winner = pick_winner(results)
+    winner, reasons, confidence = pick_winner_with_confidence(results)
     for r in results:
         r["winner"] = (r["model_name"] == winner)
+        r["confidence"] = confidence.get(r["model_name"], 0)
         save_result(prompt, r, task_type)
-    reasoning = f"{winner} scored highest on combined quality, speed, and cost efficiency."
-    return {"prompt": prompt, "results": results, "recommended_model": winner, "reasoning": reasoning}
+    reasoning = f"{winner} won because: " + " · ".join(f"✓ {r}" for r in reasons)
+    return {
+        "prompt": prompt,
+        "results": results,
+        "recommended_model": winner,
+        "reasoning": reasoning,
+        "winner_reasons": reasons,
+        "confidence_scores": confidence
+
