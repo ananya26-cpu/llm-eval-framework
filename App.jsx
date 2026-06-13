@@ -15,7 +15,7 @@ export default function App() {
     setError(null)
     setResults(null)
     try {
-      const res = await axios.post("http://127.0.0.1:8000/evaluate", {
+      const res = await axios.post("https://llm-eval-framework-2.onrender.com", {
         prompt, task_type: taskType
       })
       setResults(res.data)
