@@ -168,7 +168,13 @@ async def evaluate(prompt, task_type="general"):
         "winner_reasons": reasons,
         "confidence_scores": confidence
     }
-
+"prompt": prompt,
+        "results": results,
+        "recommended_model": winner,
+        "reasoning": reasoning,
+        "winner_reasons": reasons,
+        "confidence_scores": confidence
+    }
 
 
 
