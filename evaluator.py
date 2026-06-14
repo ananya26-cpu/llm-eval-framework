@@ -113,7 +113,7 @@ Reply ONLY with a JSON like: {{"LLaMA 70B": 8.5, "LLaMA 8B": 7.0, "Gemini 2.0 Fl
         scores = json.loads(scores_text[s:e])
         for r in results:
             r["quality_score"] = scores.get(r["model_name"], 5.0)
-    except:
+    except Exception:
         for r in results:
             r["quality_score"] = 5.0
     return results
@@ -168,13 +168,3 @@ async def evaluate(prompt, task_type="general"):
         "winner_reasons": reasons,
         "confidence_scores": confidence
     }
-return {
-        "prompt": prompt,
-        "results": results,
-        "recommended_model": winner,
-        "reasoning": reasoning,
-        "winner_reasons": reasons,
-        "confidence_scores": confidence
-    }
-
-
