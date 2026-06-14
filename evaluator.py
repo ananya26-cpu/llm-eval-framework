@@ -167,4 +167,6 @@ async def evaluate(prompt, task_type="general"):
         "reasoning": reasoning,
         "winner_reasons": reasons,
         "confidence_scores": confidence
+    }
+
 
