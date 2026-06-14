@@ -1,4 +1,3 @@
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -271,3 +270,7 @@ async def batch_evaluate(request: dict):
         "monthly_saving_usd": monthly_saving,
         "insight": f"Switching to {cheapest[0]} saves ~${monthly_saving}/month at scale" if cheapest and monthly_saving > 0 else "Models are similarly priced"
     }
+   
+   
+
+   
