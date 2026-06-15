@@ -72,11 +72,23 @@ async def call_groq(prompt, model_id, model_name, cost):
         latency = round((time.time() - start) * 1000, 2)
         text = response.choices[0].message.content
         tokens = response.usage.total_tokens
-        return {"model_name": model_name, "response": text, "latency_ms": latency,
-                "tokens_used": tokens, "cost_per_1k_tokens": cost, "quality_score": 0.0}
+        return {
+            "model_name": model_name,
+            "response": text,
+            "latency_ms": latency,
+            "tokens_used": tokens,
+            "cost_per_1k_tokens": cost,
+            "quality_score": 0.0
+        }
     except Exception as e:
-        return {"model_name": model_name, "response": f"Error: {str(e)}",
-                "latency_ms": 0, "tokens_used": 0, "cost_per_1k_tokens": cost, "quality_score": 0.0}
+        return {
+            "model_name": model_name,
+            "response": f"Error: {str(e)}",
+            "latency_ms": 0,
+            "tokens_used": 0,
+            "cost_per_1k_tokens": cost,
+            "quality_score": 0.0
+        }
 
 async def call_gemini(prompt):
     loop = asyncio.get_event_loop()
@@ -88,11 +100,23 @@ async def call_gemini(prompt):
         latency = round((time.time() - start) * 1000, 2)
         text = response.text
         tokens = len(text.split()) * 2
-        return {"model_name": "Gemini 2.0 Flash", "response": text, "latency_ms": latency,
-                "tokens_used": tokens, "cost_per_1k_tokens": 0.0, "quality_score": 0.0}
+        return {
+            "model_name": "Gemini 2.0 Flash",
+            "response": text,
+            "latency_ms": latency,
+            "tokens_used": tokens,
+            "cost_per_1k_tokens": 0.0,
+            "quality_score": 0.0
+        }
     except Exception as e:
-        return {"model_name": "Gemini 2.0 Flash", "response": f"Error: {str(e)}",
-                "latency_ms": 0, "tokens_used": 0, "cost_per_1k_tokens": 0.0, "quality_score": 0.0}
+        return {
+            "model_name": "Gemini 2.0 Flash",
+            "response": f"Error: {str(e)}",
+            "latency_ms": 0,
+            "tokens_used": 0,
+            "cost_per_1k_tokens": 0.0,
+            "quality_score": 0.0
+        }
 
 def score_quality(results, prompt):
     try:
